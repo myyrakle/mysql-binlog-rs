@@ -21,7 +21,10 @@ pub enum CdcError {
     QueryError(String),
 
     #[error("I/O 에러: {0}")]
-    IoError(#[from] io::Error),
+    IoError(String),
+
+    #[error("프로토콜 에러: {0}")]
+    ProtocolError(String),
 
     #[error("직렬화 에러: {0}")]
     SerializationError(#[from] serde_json::Error),
@@ -29,8 +32,17 @@ pub enum CdcError {
     #[error("Timeout 에러")]
     Timeout,
 
+    #[error("채널이 닫혔습니다")]
+    ChannelClosed,
+
     #[error("예상치 못한 에러: {0}")]
     Other(String),
+}
+
+impl From<io::Error> for CdcError {
+    fn from(err: io::Error) -> Self {
+        CdcError::IoError(err.to_string())
+    }
 }
 
 pub type Result<T> = std::result::Result<T, CdcError>;

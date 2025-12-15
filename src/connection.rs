@@ -82,7 +82,7 @@ impl MySqlConnection {
     /// Binlog 상태 조회
     pub async fn get_binlog_status(&mut self) -> Result<BinlogStatus> {
         let result: Vec<(String, u64, String, String, String)> = self.conn
-            .query("SHOW BINARY LOG STATUS")
+            .query("SHOW MASTER STATUS")
             .await
             .map_err(|e| CdcError::QueryError(format!("Failed to query binlog status: {}", e)))?;
 

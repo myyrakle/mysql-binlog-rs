@@ -7,18 +7,21 @@
 //! - 변경 이벤트 추적
 //! - 연결 관리 및 재시작
 
+pub mod auth;
 pub mod binlog;
-pub mod connection;
+pub mod binlog_client;
 pub mod cdc_engine;
-pub mod events;
+pub mod connection;
 pub mod error;
+pub mod events;
 pub mod gtid;
 pub mod offset;
+pub mod protocol;
 
-pub use binlog::BinlogClient;
+pub use binlog_client::BinlogClient;
 pub use cdc_engine::CdcEngine;
 pub use connection::MySqlConnection;
-pub use events::{BinlogEvent, EventType, ChangeEvent};
 pub use error::{CdcError, Result};
+pub use events::{BinlogEvent, ChangeEvent, EventType};
 pub use gtid::GtidSet;
 pub use offset::SourceInfo;

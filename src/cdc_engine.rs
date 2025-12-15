@@ -203,17 +203,57 @@ impl CdcEngine {
 
     /// Binlog 스트리밍 시작
     pub async fn stream_binlog(&mut self) -> Result<CdcEventReceiver> {
-        let (tx, rx) = mpsc::unbounded_channel();
+        use crate::binlog_client::BinlogClient;
 
         info!(
-            "Starting binlog streaming from {}",
-            self.offset.binlog_position
+            "Starting binlog streaming from {}:{}",
+            self.offset.binlog_position.filename, self.offset.binlog_position.position
         );
 
-        // 실제 MySQL 프로토콜 기반 Binlog 클라이언트 필요
-        // 여기서는 간단한 시뮬레이션
+        // BinlogClient 생성
+        let client = BinlogClient::new(
+            self.config.connection.clone(),
+            self.offset.binlog_position.filename.clone(),
+            self.offset.binlog_position.position,
+        );
+
+        // Binlog 이벤트 수신 시작
+        let binlog_rx = client.start_streaming().await?;
+
+        // ChangeEvent로 변환하는 채널
+        let (tx, rx) = mpsc::unbounded_channel();
+
+        // 백그라운드에서 BinlogEvent를 ChangeEvent로 변환
+        let table_metadata = self.table_metadata.clone();
+        let databases = self.config.databases.clone();
+        let include_ddl = self.config.include_ddl;
+
+        tokio::spawn(async move {
+            Self::process_binlog_events(binlog_rx, tx, table_metadata, databases, include_ddl)
+                .await;
+        });
 
         Ok(rx)
+    }
+
+    /// Binlog 이벤트를 처리하여 ChangeEvent로 변환
+    async fn process_binlog_events(
+        mut binlog_rx: mpsc::UnboundedReceiver<crate::events::BinlogEvent>,
+        tx: mpsc::UnboundedSender<ChangeEvent>,
+        _table_metadata: std::collections::HashMap<String, TableMetadata>,
+        _databases: Vec<String>,
+        _include_ddl: bool,
+    ) {
+        while let Some(_event) = binlog_rx.recv().await {
+            // TODO: BinlogEvent를 ChangeEvent로 변환
+            // 실제 구현에서는 이벤트 타입에 따라 처리:
+            // - TABLE_MAP: 테이블 메타데이터 업데이트
+            // - WRITE_ROWS: INSERT 이벤트
+            // - UPDATE_ROWS: UPDATE 이벤트
+            // - DELETE_ROWS: DELETE 이벤트
+            // - QUERY: DDL 이벤트
+            // - GTID: GTID 업데이트
+        }
     }
 
     /// 테이블 맵 이벤트 처리

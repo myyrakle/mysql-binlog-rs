@@ -19,8 +19,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .unwrap_or_else(|_| "3306".to_string())
                 .parse()
                 .unwrap_or(3306),
-            username: env::var("DB_USER").unwrap_or_else(|_| "testuser".to_string()),
-            password: env::var("DB_PASSWORD").unwrap_or_else(|_| "testpass".to_string()),
+            username: env::var("DB_USER").unwrap_or_else(|_| "root".to_string()),
+            password: env::var("DB_PASSWORD").unwrap_or_else(|_| "rootpassword".to_string()),
             database: Some(env::var("DB_NAME").unwrap_or_else(|_| "testdb".to_string())),
             server_id: 1,
             timeout: std::time::Duration::from_secs(30),
@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("Snapshot phase started");
 
     // Binlog 스트리밍
-    let _binlog_rx = engine.stream_binlog().await?;
+    let mut binlog_rx = engine.stream_binlog().await?;
     info!("Binlog streaming started");
 
     // 변경 이벤트 처리 (간단한 예제)
@@ -59,6 +59,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // - _snapshot_rx와 _binlog_rx에서 이벤트를 수신
     // - ChangeEvent를 처리 (Kafka, 파일, 데이터베이스 등으로 전송)
     // - 오프셋 관리
+    while let Some(event) = binlog_rx.recv().await {
+        info!("Received change event: {:?}", event);
+    }
 
     Ok(())
 }
@@ -66,6 +69,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// CDC 통합 테스트 예제
 #[cfg(test)]
 mod integration_tests {
+    use rust_mysql::{cdc_engine, connection};
+
     use super::*;
 
     #[tokio::test]
